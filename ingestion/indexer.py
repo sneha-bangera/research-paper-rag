@@ -229,14 +229,15 @@ class PaperIndexer:
     def list_papers(self) -> list[dict]:
         """
         Return a deduplicated list of indexed papers with basic stats.
+        Includes abstract text sourced from the L1 abstract chunk.
         """
         try:
-            result = self.collection.get(include=["metadatas"])
+            result = self.collection.get(include=["metadatas", "documents"])
         except Exception:
             return []
 
         seen: dict[str, dict] = {}
-        for meta in result["metadatas"]:
+        for meta, doc in zip(result["metadatas"], result["documents"]):
             pid = meta.get("paper_id", "")
             if pid not in seen:
                 seen[pid] = {
@@ -246,11 +247,40 @@ class PaperIndexer:
                     "year": meta.get("year", ""),
                     "source": meta.get("source", ""),
                     "arxiv_id": meta.get("arxiv_id", ""),
+                    "abstract": "",
                     "chunk_count": 0,
                 }
             seen[pid]["chunk_count"] += 1
+            # Grab text from the L1 abstract chunk (chunk_level == 1)
+            if meta.get("chunk_level") == 1 and not seen[pid]["abstract"]:
+                seen[pid]["abstract"] = doc
 
         return list(seen.values())
+    # def list_papers(self) -> list[dict]:
+    #     """
+    #     Return a deduplicated list of indexed papers with basic stats.
+    #     """
+    #     try:
+    #         result = self.collection.get(include=["metadatas"])
+    #     except Exception:
+    #         return []
+
+    #     seen: dict[str, dict] = {}
+    #     for meta in result["metadatas"]:
+    #         pid = meta.get("paper_id", "")
+    #         if pid not in seen:
+    #             seen[pid] = {
+    #                 "paper_id": pid,
+    #                 "paper_title": meta.get("paper_title", ""),
+    #                 "authors": meta.get("authors", ""),
+    #                 "year": meta.get("year", ""),
+    #                 "source": meta.get("source", ""),
+    #                 "arxiv_id": meta.get("arxiv_id", ""),
+    #                 "chunk_count": 0,
+    #             }
+    #         seen[pid]["chunk_count"] += 1
+
+    #     return list(seen.values())
 
     def get_collection_stats(self) -> dict:
         return {

@@ -11,7 +11,7 @@ from typing import Generator, Optional
 from groq import Groq
 from dotenv import load_dotenv
 
-from .prompts import qa_prompt, summarize_prompt, compare_prompt
+from .prompts import qa_prompt, summarize_prompt, compare_prompt, confidence_prompt
 from retrieval.hybrid_retriever import retrieve, retrieve_for_paper
 
 load_dotenv()
@@ -160,3 +160,37 @@ def compare_papers(paper_a: dict, paper_b: dict) -> tuple[str, list[dict]]:
         max_tokens=MAX_TOKENS,   # was MAX_TOKENS * 2; 1024 is enough for comparison
     )
     return response.choices[0].message.content, chunks_a + chunks_b
+
+
+# Confidence scoring  (non-streaming, fast)
+def score_confidence(query: str, answer: str, chunks: list[dict]) -> int:
+    """
+    Ask the LLM to rate how well the retrieved context supported the answer.
+
+    Returns an integer score 1–5:
+        5 — answer is fully and directly supported by the context
+        4 — answer is mostly supported, minor gaps
+        3 — answer is partially supported
+        2 — answer is loosely related to the context
+        1 — context did not contain relevant information
+
+    Uses a tiny prompt to minimise token usage — separate API call after streaming.
+    Returns 0 on any error so the UI can handle it gracefully.
+    """
+    prompt = confidence_prompt(query, answer, _truncate_chunks(chunks, 300))
+    try:
+        client = _get_client()
+        response = client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=5,   # we only want a single digit back
+        )
+        raw = response.choices[0].message.content.strip()
+        # Extract first digit found (1–5)
+        for ch in raw:
+            if ch in "12345":
+                return int(ch)
+        return 0
+    except Exception as exc:
+        logger.warning("Confidence scoring failed: %s", exc)
+        return 0

@@ -73,3 +73,24 @@ Compare these two papers across the following dimensions. Be specific and cite w
 **Key Results**: What are the reported outcomes?
 **Limitations**: What are the weaknesses of each approach?
 **Verdict**: In what scenarios would you prefer one over the other?"""
+
+
+def confidence_prompt(query: str, answer: str, chunks: list[dict]) -> str:
+    context = _format_context(chunks)
+    return f"""You are evaluating a RAG system answer.
+
+QUESTION: {query}
+
+ANSWER GIVEN: {answer[:400]}
+
+CONTEXT THAT WAS AVAILABLE:
+{context}
+
+Rate how well the CONTEXT supported the ANSWER on a scale of 1 to 5:
+5 = answer is fully and directly supported by the context
+4 = answer is mostly supported, minor gaps
+3 = answer is partially supported
+2 = answer is only loosely related to context
+1 = context had little to no relevant information
+
+Reply with a SINGLE digit (1, 2, 3, 4, or 5) and nothing else."""
