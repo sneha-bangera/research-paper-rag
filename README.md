@@ -1,6 +1,10 @@
+
 # Research Paper RAG
 
 A RAG-powered research assistant that lets you query across multiple academic papers without reading them all. Supports ArXiv ingestion, PDF uploads, cross-paper Q&A and summarization.
+
+
+https://github.com/user-attachments/assets/b3aead0f-918c-46f8-96e8-58a63ded8794
 
 ---
 
